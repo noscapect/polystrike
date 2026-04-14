@@ -4611,6 +4611,7 @@ function animate(ts) {
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (ts - last) / 1000 || 0.016);
   last = ts;
+
   if (started && !gamePaused) {
     updateRound(dt);
     if (roundActive) {

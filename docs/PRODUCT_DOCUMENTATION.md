@@ -34,7 +34,7 @@ Core promise:
 
 - Deathmatch Instagib
 - Classic Deathmatch (UT-style baseline)
-- Capture The Flag (CTF)
+- Capture The Flag (Alpha) (CTF)
 - Lobby options:
   - map selection
   - bot count (`1..11`)

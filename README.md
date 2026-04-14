@@ -171,6 +171,13 @@ Saved map edits are stored in browser `localStorage`. Built-in map edits can be 
 - Learned nav data is persisted per map/layout and automatically baked/saved at match end.
 - Use `Z` in debug level mode to inspect the current learned nav graph.
 
+### Advanced Bot AI features
+
+- **Dynamic Personality**: Bots evaluate their performance (kill/death streaks) and health to shift states (e.g., confident, desperate, hunted), affecting aggression, accuracy, and movement.
+- **Nemesis System**: Bots remember opponents who kill them repeatedly and may focus them for revenge.
+- **Cover & Line-of-Sight**: Bots dynamically use physical map geometry to break line-of-sight and take cover when at a disadvantage.
+- **High-Ground Awareness**: Bots calculate vertical advantage and actively seek elevated platforms to improve combat effectiveness.
+
 ### Combat heatmap notes
 
 - Combat heat is recorded from kill/death events during gameplay.

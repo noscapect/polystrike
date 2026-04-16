@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0604">
+  <meta name="color-scheme" content="dark">
+  <title>Polystrike Arena — InstaGib</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --hud-bg: rgba(8, 6, 12, 0.72);
+      --hud-border: rgba(180, 150, 90, 0.35);
+      --hud-accent: #e8a050;
+      --hud-glow: rgba(255, 140, 60, 0.12);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+    body { background: #000; overflow: hidden; font-family: 'Orbitron', "Segoe UI", Arial, sans-serif; color: #fff; }
+
+    .hud-lbl { font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; font-family: 'Orbitron', sans-serif; }
+    .hud-val { font-size: 1.9rem; font-weight: 900; line-height: 1.1; font-family: 'Orbitron', monospace; }
+
+    /* ── Top HUD ── */
+    #hud-top {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px;
+      padding: 8px 14px; pointer-events: none; z-index: 10;
+    }
+    .mp-hud-rank {
+      flex: 1;
+      max-width: 220px;
+      min-width: 140px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 6px 12px 8px;
+    }
+    .mp-hud-rank .mp-hud-lvl {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #7ec8ff;
+      margin-bottom: 4px;
+    }
+    .mp-hud-rank .mp-hud-lvl span {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #ffcc66;
+      letter-spacing: 0.05em;
+    }
+    .mp-hud-bar-track {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(0, 20, 40, 0.75);
+      border: 1px solid rgba(100, 180, 255, 0.25);
+      overflow: hidden;
+    }
+    .mp-hud-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #2a80c8, #5ad4ff);
+      box-shadow: 0 0 12px rgba(100, 210, 255, 0.45);
+      transition: width 0.25s ease-out;
+    }
+    .mp-hud-xp {
+      font-size: 0.58rem;
+      color: #9ab0c8;
+      margin-top: 4px;
+      letter-spacing: 0.06em;
+      font-family: ui-monospace, monospace;
+    }
+    .hud-top-panel {
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      border-radius: 4px; padding: 6px 14px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 28px rgba(0,0,0,0.45), inset 0 1px 0 var(--hud-glow);
+    }
+    .hud-top-lbl { font-size: 0.58rem; letter-spacing: 1px; text-transform: uppercase; color: #8a7a5a; }
+    #timer { font-size: 1.35rem; font-weight: 700; color: #d0c090; font-family: 'Orbitron', monospace; }
+    #timer.warn { color: #ff4444; text-shadow: 0 0 8px #ff2222; }
+    #frags-val { font-size: 1.45rem; font-weight: 900; color: #ff8844; font-family: 'Orbitron', monospace; }
+    #deaths-val { color: #887766; }
+
+    /* ── Weapon label ── */
+    #weapon-label {
+      position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: var(--hud-bg); border: 1px solid var(--hud-border);
+      border-radius: 4px; padding: 8px 28px; text-align: center;
+      z-index: 10; pointer-events: none;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 -2px 32px rgba(0,0,0,0.35), inset 0 1px 0 var(--hud-glow);
+    }
+    #weapon-label .hud-lbl { font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: #bb44ff; }
+    #weapon-label .hud-val { font-size: 1.3rem; font-weight: 900; color: #ff44cc; text-shadow: 0 0 8px #cc22aa; font-family: 'Orbitron', monospace; letter-spacing: 3px; }
+    #weapon-bar {
+      position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%);
+      z-index: 10; display: none; gap: 8px; pointer-events: none;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .weapon-slot {
+      min-width: 96px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(120,140,170,0.35);
+      background: rgba(10,16,24,0.74);
+      color: rgba(180,205,230,0.9);
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .weapon-slot.active {
+      border-color: rgba(255,146,74,0.92);
+      color: #ffd9b8;
+      box-shadow: 0 0 12px rgba(255,126,56,0.28), inset 0 0 8px rgba(255,126,56,0.16);
+    }
+    .weapon-slot.locked { opacity: 0.45; }
+
+    /* ── Kill feed ── */
+    #killfeed {
+      position: fixed; top: 50px; right: 12px; z-index: 18; pointer-events: none;
+      display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
+    }
+    .kf-entry {
+      background: rgba(8, 6, 10, 0.75); border: 1px solid rgba(139,117,53,0.2);
+      border-radius: 3px; padding: 4px 10px; font-size: 0.72rem; white-space: nowrap;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    }
+    .kf-tags {
+      display: inline-flex; gap: 3px; margin-right: 7px; vertical-align: middle; align-items: center;
+    }
+    .kf-tag {
+      font-size: 0.58rem; font-weight: 800; letter-spacing: 0.4px; padding: 1px 4px; border-radius: 2px;
+      line-height: 1.15; font-family: 'Orbitron', sans-serif;
+    }
+    .kf-tag--udmg { background: rgba(136,68,255,0.38); color: #eee8ff; border: 1px solid rgba(180,140,255,0.55); }
+    .kf-tag--tnt { background: rgba(255,85,34,0.4); color: #fff0e8; border: 1px solid rgba(255,140,90,0.58); }
+    .kf-tag--splash { background: rgba(255,190,70,0.42); color: #fffaf0; border: 1px solid rgba(255,210,120,0.6); }
+
+    /* ── Announcer text ── */
+    #announcer-text {
+      position: fixed; top: 28%; left: 50%; transform: translateX(-50%);
+      font-size: 2.9rem; font-weight: 900; letter-spacing: 5px; font-family: 'Orbitron', sans-serif;
+      text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+      pointer-events: none; z-index: 22; opacity: 0; transition: opacity 0.15s;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    #killmsg {
+      position: fixed; top: 40%; left: 50%; transform: translateX(-50%);
+      font-size: 1.2rem; font-weight: 700; letter-spacing: 3px; font-family: 'Orbitron', sans-serif;
+      pointer-events: none; z-index: 20; opacity: 0; transition: opacity 0.15s;
+      text-transform: uppercase;
+    }
+
+    /* ── Crosshair ── */
+    #crosshair {
+      position: fixed; top: 50%; left: 50%; z-index: 15; pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: transform 0.05s ease-out, filter 0.05s ease-out;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ""; position: absolute; background: rgba(255,68,204,0.9);
+      box-shadow: 0 0 5px #ff44cc, 0 0 10px #bb22aa;
+    }
+    #crosshair::before { width: 2px; height: 22px; left: -1px; top: -11px; }
+    #crosshair::after  { width: 22px; height: 2px; left: -11px; top: -1px; }
+
+    /* ── Hit marker (expanding ring on kill) ── */
+    #hitmarker {
+      position: fixed; top: 50%; left: 50%;
+      width: 0; height: 0;
+      pointer-events: none; z-index: 16;
+    }
+    #hitmarker.active {
+      animation: hm-ring 0.26s cubic-bezier(0.15, 0.8, 0.3, 1) forwards;
+    }
+    @keyframes hm-ring {
+      0%   { box-shadow: 0 0 0 5px rgba(255,255,255,1),    0 0 0 6px rgba(255,68,204,0.9); }
+      45%  { box-shadow: 0 0 0 16px rgba(255,68,204,0.55), 0 0 0 18px rgba(255,136,51,0.4); }
+      100% { box-shadow: 0 0 0 32px rgba(255,68,204,0),   0 0 0 34px rgba(0,0,0,0); }
+    }
+
+    /* ── Vignette: depth + light tint in corners (cheap for GPU) ── */
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 5;
+      background:
+        radial-gradient(ellipse 96% 90% at 50% 38%, transparent 0%, rgba(0,0,0,0.28) 58%, rgba(0,0,0,0.52) 100%),
+        radial-gradient(ellipse 130% 85% at 50% 108%, rgba(18,6,28,0.35) 0%, transparent 52%);
+      mix-blend-mode: multiply;
+    }
+
+    /* ── Main menu (reference: sci-fi fullscreen + left nav) ── */
+    #overlay.menu-screen {
+      position: fixed; inset: 0; z-index: 30;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+      pointer-events: auto; overflow: auto;
+      color: #e8f4ff;
+      font-family: 'Orbitron', system-ui, sans-serif;
+    }
+    .menu-bg {
+      position: absolute; inset: 0;
+      background: #050a12 url('assets/menu-bg.png') center center / cover no-repeat;
+      z-index: 0;
+    }
+    .menu-bg::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(105deg, rgba(2, 8, 18, 0.88) 0%, rgba(4, 12, 22, 0.55) 42%, rgba(2, 6, 14, 0.75) 100%);
+    }
+    .menu-frame {
+      position: relative; z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-height: 100%;
+      padding: clamp(12px, 3vh, 28px) clamp(16px, 4vw, 48px) clamp(16px, 3vh, 32px);
+      box-sizing: border-box;
+    }
+    .menu-center-cluster {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      min-height: 0;
+    }
+    .menu-brand {
+      text-align: center;
+      margin-bottom: clamp(8px, 2vh, 24px);
+      width: 100%;
+      max-width: 56rem;
+    }
+    .menu-title-poly {
+      font-family: 'Audiowide', 'Orbitron', sans-serif;
+      font-size: clamp(2rem, 6vw, 3.6rem);
+      font-weight: 400;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      line-height: 1.05;
+      transform: skewX(-6deg);
+      background: linear-gradient(180deg, #ffe8a8 0%, #ff9a2e 45%, #e85a00 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 2px 0 rgba(0,0,0,0.85)) drop-shadow(0 0 24px rgba(255,140,60,0.45));
+    }
+    .menu-title-arena {
+      font-family: 'Audiowide', 'Orbitron', sans-serif;
+      font-size: clamp(1.6rem, 4.5vw, 2.8rem);
+      font-weight: 400;
+      font-style: italic;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      transform: skewX(-6deg);
+      margin-top: 2px;
+      color: #7ee8ff;
+      text-shadow:
+        0 0 40px rgba(100, 220, 255, 0.55),
+        0 0 80px rgba(60, 160, 220, 0.35),
+        0 2px 0 rgba(0, 20, 40, 0.9);
+    }
+    .menu-sub {
+      margin-top: 10px;
+      font-size: 0.72rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(180, 210, 230, 0.65);
+    }
+    .menu-main {
+      display: grid;
+      grid-template-columns: minmax(200px, 280px) minmax(260px, 520px);
+      gap: clamp(16px, 4vw, 48px);
+      align-items: start;
+      width: max-content;
+      max-width: 100%;
+      margin: 0 auto;
+      min-height: 0;
+    }
+    @media (max-width: 720px) {
+      .menu-main {
+        grid-template-columns: 1fr;
+        width: 100%;
+        justify-items: stretch;
+      }
+    }
+    .menu-nav {
+      display: flex; flex-direction: column; gap: 6px;
+      align-items: stretch;
+    }
+    .menu-item {
+      position: relative;
+      display: block; width: 100%;
+      padding: 12px 40px 12px 16px;
+      text-align: left;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(230, 245, 255, 0.88);
+      background: rgba(4, 12, 22, 0.35);
+      border: 1px solid rgba(80, 140, 180, 0.22);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, color 0.2s, background 0.2s;
+    }
+    .menu-item:hover:not(:disabled) {
+      border-color: rgba(120, 200, 255, 0.45);
+      background: rgba(20, 50, 80, 0.35);
+      color: #fff;
+    }
+    .menu-item.is-selected {
+      border-color: rgba(120, 220, 255, 0.95);
+      box-shadow:
+        0 0 22px rgba(80, 200, 255, 0.28),
+        inset 0 0 28px rgba(80, 200, 255, 0.08);
+      color: #f0fdff;
+      background: rgba(15, 45, 72, 0.45);
+    }
+    .menu-item.is-selected::after {
+      content: '◀';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.65rem;
+      opacity: 0.85;
+      color: #8ee8ff;
+    }
+    .menu-item:disabled,
+    .menu-item.is-disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+    .menu-content {
+      background: rgba(4, 14, 24, 0.5);
+      border: 1px solid rgba(100, 170, 210, 0.2);
+      border-radius: 4px;
+      padding: 16px 18px;
+      max-width: 520px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .hidden { display: none !important; }
+    .menu-panel.hidden { display: none !important; }
+    .menu-panel .tips {
+      font-size: 0.72rem;
+      line-height: 1.55;
+      color: rgba(180, 195, 210, 0.85);
+      letter-spacing: 0.03em;
+    }
+    .menu-panel .tips strong { color: #a8e0ff; font-weight: 700; }
+    .menu-panel .nick-wrap { margin-top: 12px; align-items: flex-start; }
+    .menu-panel .nick-wrap label { color: rgba(160, 190, 210, 0.9); }
+    .menu-panel .nick-wrap input[data-nick-input] {
+      border-color: rgba(100, 170, 200, 0.4);
+      background: rgba(0, 8, 18, 0.55);
+      color: #e8f4ff;
+    }
+    .menu-mp-block { margin-top: 12px; }
+    .menu-settings-hint {
+      font-size: 0.75rem;
+      color: rgba(160, 190, 210, 0.9);
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    #menu-sens-slider { width: 100%; max-width: 280px; accent-color: #4ad4ff; cursor: pointer; }
+    #menu-sens-val { color: #7ee8ff; font-family: 'Orbitron', monospace; font-size: 0.85rem; }
+    #startbtn {
+      margin-top: 16px;
+      width: 100%; max-width: 320px;
+      padding: 12px 24px;
+      font-size: 0.82rem; font-weight: 700;
+      background: linear-gradient(180deg, rgba(255,150,60,0.25) 0%, rgba(255,100,30,0.12) 100%);
+      border: 2px solid rgba(255, 160, 80, 0.85);
+      color: #ffd4a8;
+      border-radius: 3px; cursor: pointer;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      font-family: 'Orbitron', sans-serif;
+      box-shadow: 0 0 28px rgba(255,120,50,0.2);
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    #startbtn:hover {
+      background: rgba(255, 140, 60, 0.45);
+      color: #0a0604;
+      border-color: #ffb060;
+      box-shadow: 0 0 40px rgba(255,160,80,0.45);
+    }
+    .menu-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-shrink: 0;
+      width: 100%;
+      max-width: 72rem;
+      margin: 0 auto;
+      padding-top: 16px;
+    }
+    .menu-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(4, 12, 22, 0.65);
+      border: 1px solid rgba(100, 160, 200, 0.25);
+      border-radius: 4px;
+      min-width: 240px;
+    }
+    .menu-avatar {
+      width: 48px; height: 48px;
+      border-radius: 4px;
+      background: linear-gradient(145deg, #3a4555, #1a2230);
+      border: 1px solid rgba(120, 160, 190, 0.35);
+      display: grid; place-items: center;
+      font-size: 1.4rem;
+      color: rgba(200, 220, 235, 0.5);
+    }
+    .menu-avatar-wrap { position: relative; flex-shrink: 0; }
+    .menu-avatar-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -4px;
+      min-width: 1.1rem;
+      padding: 1px 4px;
+      text-align: center;
+      border-radius: 2px;
+      background: rgba(8, 16, 28, 0.92);
+      border: 1px solid rgba(120, 160, 200, 0.4);
+      font-size: 0.55rem;
+      font-weight: 800;
+      color: #ffcc66;
+    }
+    .menu-profile-text {
+      display: flex; flex-direction: column; gap: 2px;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      color: rgba(180, 205, 225, 0.9);
+    }
+    .menu-profile-text #menu-profile-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #e8f8ff;
+      letter-spacing: 0.04em;
+    }
+    .menu-xp-bar {
+      margin-top: 6px;
+      height: 5px;
+      border-radius: 2px;
+      background: rgba(0, 20, 40, 0.8);
+      border: 1px solid rgba(80, 160, 220, 0.25);
+      overflow: hidden;
+    }
+    .menu-xp-bar i {
+      display: block;
+      height: 100%;
+      width: 62%;
+      background: linear-gradient(90deg, #2080c0, #40d0ff);
+      border-radius: 1px;
+    }
+    .menu-footer-right {
+      text-align: right;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      color: rgba(160, 190, 210, 0.75);
+      line-height: 1.6;
+    }
+    .menu-footer-right strong {
+      color: #ffd866;
+      font-weight: 700;
+    }
+    .menu-social {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .menu-social a {
+      display: grid; place-items: center;
+      width: 28px; height: 28px;
+      border-radius: 4px;
+      background: rgba(30, 50, 70, 0.6);
+      border: 1px solid rgba(100, 160, 200, 0.25);
+      color: rgba(180, 210, 230, 0.85);
+      text-decoration: none;
+      font-size: 0.75rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .menu-social a:hover {
+      background: rgba(60, 100, 140, 0.5);
+      border-color: rgba(140, 200, 255, 0.45);
+      color: #fff;
+    }
+    #menu-admob-banner-slot {
+      width: 100%;
+      min-height: 52px;
+      margin: 10px auto 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 0.64rem;
+      letter-spacing: 0.08em;
+      color: rgba(160, 190, 210, 0.75);
+      background: rgba(4, 12, 22, 0.42);
+      border: 1px dashed rgba(100, 160, 200, 0.24);
+      border-radius: 4px;
+      max-width: 72rem;
+      padding: 8px 10px;
+      box-sizing: border-box;
+    }
+    #menu-admob-banner-slot.is-visible {
+      display: flex;
+    }
+    #profile-modal.hidden { display: none !important; }
+    #profile-modal {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(4, 8, 14, 0.78);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    #profile-modal .pm-card {
+      width: min(720px, 92vw);
+      background: rgba(6, 14, 24, 0.9);
+      border: 1px solid rgba(110, 180, 220, 0.35);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.45);
+    }
+    #profile-modal .pm-grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 14px;
+    }
+    #profile-modal .pm-stat {
+      display: flex; justify-content: space-between;
+      border-bottom: 1px solid rgba(110,180,220,0.16);
+      padding: 5px 0;
+      font-size: 0.72rem;
+      color: #cbe4f8;
+      letter-spacing: 0.03em;
+    }
+    #profile-modal .pm-close {
+      margin-top: 12px;
+      padding: 9px 22px;
+      border: 1px solid rgba(120,190,230,0.5);
+      border-radius: 4px;
+      background: rgba(10,40,64,0.35);
+      color: #d6ecff;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.72rem;
+    }
+    #overlay .mp-opt {
+      margin-top: 10px;
+      color: rgba(180, 200, 220, 0.9);
+    }
+    #overlay .mp-url {
+      margin-top: 8px;
+      border-color: rgba(100, 170, 200, 0.35);
+      background: rgba(0, 8, 18, 0.55);
+      color: #c8e0f0;
+    }
+
+    /* ── Pause ── */
+    #pause-overlay {
+      display: none; position: fixed; inset: 0; z-index: 45;
+      flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+      background: linear-gradient(165deg, rgba(14, 8, 4, 0.96) 0%, rgba(3, 2, 1, 0.94) 100%);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      pointer-events: auto;
+    }
+    #pause-overlay.is-open { display: flex; }
+    #pause-overlay h2 {
+      font-size: 1.8rem; letter-spacing: 5px; color: #ff8833; text-transform: uppercase;
+      font-family: 'Orbitron', sans-serif; margin-bottom: 4px;
+    }
+    #pause-overlay .pause-hint { color: #8a7a5a; font-size: 0.75rem; letter-spacing: 1px; max-width: 420px; text-align: center; line-height: 1.5; }
+    #pause-overlay label { color: #b0a090; font-size: 0.75rem; letter-spacing: 1px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    #sens-slider { width: 220px; accent-color: #ff8833; cursor: pointer; }
+    #sens-val { color: #ffaa66; font-family: 'Orbitron', monospace; font-size: 0.85rem; }
+    #resumebtn {
+      margin-top: 8px; padding: 10px 36px; font-size: 0.85rem; font-weight: 700;
+      background: transparent; border: 2px solid #ff8833; color: #ff8833;
+      border-radius: 3px; cursor: pointer; letter-spacing: 3px; text-transform: uppercase;
+      font-family: 'Orbitron', sans-serif;
+    }
+    #resumebtn:hover { background: #ff8833; color: #000; }
+
+    .nick-wrap { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .nick-wrap label { font-size: 0.68rem; color: #9a8a6a; letter-spacing: 1px; }
+    .nick-wrap input[data-nick-input] {
+      padding: 7px 12px; width: min(240px, 88vw); max-width: 100%;
+      background: rgba(0,0,0,0.45); border: 1px solid rgba(139,117,53,0.55); border-radius: 3px;
+      color: #e8dcc8; font-family: 'Orbitron', sans-serif; font-size: 0.78rem; letter-spacing: 0.5px;
+    }
+    .nick-wrap input[data-nick-input]::placeholder { color: #665; }
+    .nick-wrap input[data-nick-input]:focus { outline: none; border-color: #ff8833; box-shadow: 0 0 12px rgba(255,136,51,0.25); }
+
+    /* ── Death screen ── */
+    #deathscreen {
+      position: fixed; inset: 0; background: rgba(100,0,0,0.2);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 25; pointer-events: none;
+    }
+    #deathscreen h2 { font-size: 2.6rem; color: #ff3333; text-shadow: 0 0 30px #cc0000;
+      letter-spacing: 4px; text-transform: uppercase; font-family: 'Orbitron', sans-serif; }
+    #deathscreen p { color: #ff9999; margin-top: 6px; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; letter-spacing: 2px; }
+    #death-tip {
+      display: none; margin-top: 14px; max-width: 440px; text-align: center; line-height: 1.5;
+      font-size: 0.68rem; color: #d8c8a8; letter-spacing: 0.5px; border-top: 1px solid rgba(255,136,51,0.25);
+      padding-top: 12px;
+    }
+    #death-tip strong { color: #ffcc88; }
+
+    /* ── Round end ── */
+    #roundend {
+      position: fixed; inset: 0;
+      background: linear-gradient(180deg, rgba(12, 6, 3, 0.96) 0%, rgba(4, 2, 1, 0.98) 100%);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 40; gap: 10px;
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    #roundend h2 { font-size: 2.4rem; color: #ff8833; text-shadow: 0 0 30px #ff6600;
+      letter-spacing: 5px; text-transform: uppercase; margin-bottom: 6px; font-family: 'Orbitron', sans-serif; }
+    #re-ranks {
+      background: rgba(8, 6, 10, 0.88); border: 1px solid var(--hud-border);
+      border-radius: 6px; padding: 14px 24px; min-width: 350px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.4), inset 0 1px 0 var(--hud-glow);
+    }
+    .re-row { display: flex; padding: 4px 0; border-bottom: 1px solid rgba(139,117,53,0.12);
+      font-size: 0.92rem; align-items: center; }
+    .re-rank { width: 30px; color: #8a7a5a; font-weight: 700; }
+    .re-name { flex: 1; }
+    .re-stat { width: 42px; text-align: center; color: #c0b090; }
+    #re-ranks { min-width: 390px; }
+    .re-row.first { font-size: 1.1rem; }
+    .re-row.first .re-rank { color: #ffd700; }
+    .re-you { background: rgba(255,136,51,0.1); border-radius: 3px; }
+    #re-next { color: #8a7a5a; font-size: 0.85rem; margin-top: 8px; }
+
+    /* ── Scoreboard ── */
+    #scoreboard {
+      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 35; background: rgba(6, 4, 8, 0.92); border: 1px solid var(--hud-border);
+      border-radius: 6px; padding: 16px 24px; min-width: 430px;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 16px 64px rgba(0,0,0,0.55), inset 0 1px 0 var(--hud-glow);
+    }
+    .sb-hdr { display: flex; padding: 5px 0; border-bottom: 1px solid rgba(139,117,53,0.3);
+      font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: #8a7a5a; }
+    .sb-row { display: flex; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.82rem; align-items: center; }
+    .sb-you { background: rgba(255,136,51,0.08); border-radius: 3px; }
+    .sb-name { flex: 1; }
+    .sb-stat { width: 40px; text-align: center; color: #c0b090; }
+    .sb-ping { width: 50px; text-align: center; }
+
+    .mp-opt {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: #9a8a7a;
+      margin-top: 8px;
+      max-width: 520px;
+      text-align: left;
+    }
+    .mp-opt input[type="checkbox"] { accent-color: #ff8833; cursor: pointer; }
+    #overlay .mp-url {
+      margin-top: 6px;
+      padding: 8px 12px;
+      width: min(360px, 92vw);
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(139,117,53,0.35);
+      border-radius: 4px;
+      color: #c8c0b0;
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+    }
+  </style>
+</head>
+<body>
+
+<div id="vignette" aria-hidden="true"></div>
+
+<div id="hud-top">
+  <div class="hud-top-panel">
+    <div class="hud-top-lbl">Time</div>
+    <div id="timer">5:00</div>
+  </div>
+  <div id="mp-hud-rank" class="hud-top-panel mp-hud-rank" style="display:none;" aria-label="Multiplayer rank">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="mp-hud-avatar" style="width:34px;height:34px;border-radius:4px;background:linear-gradient(145deg,#3a4555,#1a2230);border:1px solid rgba(120,160,190,0.35);display:grid;place-items:center;font-size:0.95rem;color:rgba(200,220,235,0.5);flex:0 0 auto;">👤</div>
+      <div style="min-width:0;flex:1;">
+        <div class="mp-hud-lvl"><span id="mp-hud-rank-title">Soldier</span> · LV <span id="mp-hud-level">1</span></div>
+        <div class="mp-hud-bar-track"><div id="mp-hud-bar" class="mp-hud-bar-fill"></div></div>
+        <div id="mp-hud-xp" class="mp-hud-xp">0 / 1000 XP</div>
+      </div>
+    </div>
+  </div>
+  <div class="hud-top-panel" style="text-align:right;">
+    <div class="hud-top-lbl" id="hud-score-label">Frags</div>
+    <div><span id="frags-val">0</span> <span style="color:#554; font-size:0.75rem;">/ <span id="deaths-val">0</span></span></div>
+  </div>
+</div>
+<div id="ctf-status" style="position:fixed;top:78px;left:50%;transform:translateX(-50%);z-index:15;color:#cfe4ff;font-family:'Orbitron',sans-serif;font-size:0.66rem;letter-spacing:.08em;text-transform:uppercase;background:rgba(6,12,20,0.58);border:1px solid rgba(120,160,210,0.35);padding:6px 10px;border-radius:4px;display:none;pointer-events:none;"></div>
+
+<div id="profile-modal" class="hidden" role="dialog" aria-modal="true" aria-label="Player profile">
+  <div class="pm-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:0.9rem;letter-spacing:.16em;text-transform:uppercase;color:#9fd4ff;">Player Profile</div>
+      <div id="pm-prestige" style="font-size:.72rem;color:#ffcc66;letter-spacing:.08em;">P0</div>
+    </div>
+    <div class="pm-grid">
+      <div>
+        <div id="pm-avatar" style="width:150px;height:150px;border-radius:8px;border:1px solid rgba(120,180,220,0.38);background:linear-gradient(145deg,#35465d,#1b2536);display:grid;place-items:center;color:rgba(200,220,235,.55);font-size:2.2rem;">👤</div>
+        <div id="pm-name" style="margin-top:8px;font-size:.9rem;color:#e8f6ff;font-weight:700;"></div>
+        <div id="pm-rank" style="margin-top:4px;font-size:.74rem;color:#a9c8de;"></div>
+        <div style="margin-top:8px;height:6px;border-radius:3px;background:rgba(8,22,38,.75);border:1px solid rgba(110,180,220,.26);overflow:hidden;">
+          <div id="pm-xp-fill" style="height:100%;width:0%;background:linear-gradient(90deg,#2a80c8,#5ad4ff);"></div>
+        </div>
+        <div id="pm-xp" style="margin-top:4px;font-size:.66rem;color:#92abc2;"></div>
+      </div>
+      <div id="pm-stats"></div>
+    </div>
+    <button type="button" id="pm-close" class="pm-close">Close</button>
+  </div>
+</div>
+
+
+<div id="killfeed"></div>
+<div id="announcer-text"></div>
+<div id="killmsg"></div>
+<div id="editor-hint" style="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:23;max-width:min(96vw,1200px);padding:6px 10px;border-radius:4px;border:1px solid rgba(110,180,255,0.45);background:rgba(8,18,30,0.78);color:#cfe8ff;font-size:0.62rem;letter-spacing:0.06em;text-transform:uppercase;display:none;pointer-events:none;white-space:normal;text-align:center;"></div>
+<input id="map-import-file-input" type="file" accept=".json,application/json" style="display:none;">
+<div id="crosshair"></div>
+<div id="hitmarker"></div>
+<div id="profile-toast" style="position:fixed;top:86px;right:14px;z-index:26;pointer-events:none;opacity:0;transform:translateY(-6px);transition:opacity .22s ease,transform .22s ease;background:rgba(8,18,30,.82);border:1px solid rgba(120,190,255,.35);border-radius:6px;padding:8px 12px;color:#d8ecff;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 6px 24px rgba(0,0,0,.35);"></div>
+
+<div id="weapon-label">
+  <div class="hud-lbl">Enhanced Shock Rifle</div>
+  <div class="hud-val">INSTAGIB</div>
+</div>
+<div id="weapon-bar">
+  <div class="weapon-slot" data-weapon-id="enforcer">1 Enforcer</div>
+  <div class="weapon-slot locked" data-weapon-id="shock">2 Shock</div>
+  <div class="weapon-slot locked" data-weapon-id="rocket">3 Rocket</div>
+</div>
+
+<div id="scoreboard"></div>
+
+<div id="deathscreen">
+  <h2>YOU WERE FRAGGED</h2>
+  <p id="respawntxt">Respawn in...</p>
+  <p id="death-tip"></p>
+</div>
+
+<div id="roundend">
+  <h2 id="re-title">ROUND OVER</h2>
+  <div id="re-ranks"></div>
+  <p id="re-next">Next round in...</p>
+</div>
+
+<div id="overlay" class="menu-screen">
+  <div class="menu-bg" aria-hidden="true"></div>
+  <div class="menu-frame">
+    <div class="menu-center-cluster">
+    <header class="menu-brand">
+      <div class="menu-title-poly">Polystrike</div>
+      <div class="menu-title-arena">Arena</div>
+      </header>
+
+    <div class="menu-main">
+      <nav class="menu-nav" id="main-menu-nav" aria-label="Main menu">
+        <button type="button" class="menu-item is-selected" data-panel="play" data-mode="single" id="menu-nav-single">Singleplayer</button>
+        <button type="button" class="menu-item is-disabled" disabled title="Coming soon" id="menu-nav-multi">Multiplayer</button>
+        <button type="button" class="menu-item is-disabled" disabled title="Coming soon">Store</button>
+        <button type="button" class="menu-item" data-panel="play" data-mode="debug" id="menu-nav-debug">Debug</button>
+        <button type="button" class="menu-item" data-panel="settings" id="menu-nav-settings">Settings</button>
+        <button type="button" class="menu-item" id="menu-btn-quit">Quit</button>
+      </nav>
+
+      <div class="menu-content">
+        <div id="menu-panel-play" class="menu-panel">
+          <div id="menu-subpanel-single">
+            <p class="tips"><strong>Single-player lobby</strong> — choose your map, bot count, and match duration.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-top:10px;">
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;grid-column:1 / span 2;">
+                Game mode
+                <select id="sp-gamemode" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="dm">Deathmatch</option>
+                <option value="ctf">Capture The Flag (Alpha)</option>
+                </select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;grid-column:1 / span 2;">
+                Ruleset
+                <select id="sp-ruleset" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="instagib">Instagib</option>
+                  <option value="instagib_plus">Instagib Plus</option>
+                </select>
+              </label>
+              <label id="sp-map-wrap" style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;">
+                Map
+                <select id="sp-map" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="0">GOTHIC ARENA</option>
+                  <option value="1">DM-DECK16</option>
+                  <option value="2">DM-MORPHEUS</option>
+                  <option value="3">DM-PHOBOS</option>
+                  <option value="4">DM-CODEX</option>
+                  <option value="5">DM-FACTORY</option>
+                  <option value="6">DM-FLETCHER</option>
+                </select>
+              </label>
+              <label id="ctf-map-wrap" class="hidden" style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;">
+                CTF Map
+                <select id="ctf-map" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="7">CTF-FACE</option>
+                </select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;">
+                Bots (max 11)
+                <input id="sp-bots" type="number" min="1" max="11" step="1" value="5" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;">
+                Bot difficulty
+                <select id="sp-bot-difficulty" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="1">1 - Fresh Meat</option>
+                  <option value="2">2 - Cannon Fodder</option>
+                  <option value="3" selected>3 - Bloodthirsty</option>
+                  <option value="4">4 - Nightmare</option>
+                  <option value="5">5 - Unreal</option>
+                </select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,200,220,0.9);font-size:0.73rem;grid-column:1 / span 2;">
+                Match length (minutes)
+                <input id="sp-minutes" type="number" min="1" max="30" step="1" value="5" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+              </label>
+            </div>
+            <p class="tips" style="margin-top:8px;">
+              <strong>WASD</strong> move · <strong>mouse</strong> look · <strong>LMB</strong> fire · <strong>space</strong> jump (double jump in mid-air)<br>
+              <strong>Tab</strong> scoreboard · <strong>Esc</strong> pause &amp; mouse sensitivity · <strong>dodge</strong> double-tap <strong>W A S D</strong> on the ground
+            </p>
+            <p class="tips" style="margin-top:8px;"><strong>Rule set:</strong> first to 25 frags or time limit.</p>
+            <p id="lb-hint" style="font-size:0.68rem;color:rgba(160,190,210,0.75);margin-top:10px;letter-spacing:0.5px;"></p>
+            <div class="nick-wrap">
+              <label for="nick-input">Nickname (scoreboard &amp; records)</label>
+              <input type="text" id="nick-input" data-nick-input maxlength="20" placeholder="optional (empty = You)" autocomplete="username">
+            </div>
+          </div>
+          <div id="menu-subpanel-multi" class="hidden"></div>
+          <div id="menu-subpanel-debug" class="hidden">
+            <p class="tips"><strong>Debug showroom</strong> — load a special map with model, material, and sound displays for quick 3D inspection.</p>
+            <p class="tips" style="margin-top:8px;">Use <strong>LMB</strong> on glowing sound pads to audition game sounds.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+              <button type="button" id="startbtn-debug-room" style="flex:1 1 180px;max-width:320px;padding:12px 24px;font-size:0.82rem;font-weight:700;background:linear-gradient(180deg, rgba(255,150,60,0.25) 0%, rgba(255,100,30,0.12) 100%);border:2px solid rgba(255,160,80,0.85);color:#ffd4a8;border-radius:3px;cursor:pointer;letter-spacing:0.2em;text-transform:uppercase;font-family:'Orbitron',sans-serif;box-shadow:0 0 28px rgba(255,120,50,0.2);">Enter debug room</button>
+              <button type="button" id="startbtn-debug-levels" style="flex:1 1 180px;max-width:320px;padding:12px 24px;font-size:0.82rem;font-weight:700;background:linear-gradient(180deg, rgba(90,170,255,0.25) 0%, rgba(40,110,200,0.14) 100%);border:2px solid rgba(110,180,255,0.85);color:#cde8ff;border-radius:3px;cursor:pointer;letter-spacing:0.18em;text-transform:uppercase;font-family:'Orbitron',sans-serif;box-shadow:0 0 24px rgba(80,150,255,0.18);">Enter debug levels</button>
+            </div>
+            <div id="menu-debug-levels-submenu" class="hidden" style="margin-top:12px;padding:10px;border:1px solid rgba(110,180,255,0.35);background:rgba(8,20,36,0.5);border-radius:4px;">
+              <label style="display:flex;flex-direction:column;gap:6px;color:rgba(180,210,235,0.9);font-size:0.73rem;">
+                Select level
+                <select id="debug-level-map" style="padding:8px 10px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                  <option value="0">GOTHIC ARENA</option>
+                  <option value="1">DM-DECK16</option>
+                  <option value="2">DM-MORPHEUS</option>
+                  <option value="3">DM-PHOBOS</option>
+                  <option value="4">DM-CODEX</option>
+                  <option value="5">DM-FACTORY</option>
+                  <option value="6">DM-FLETCHER</option>
+                </select>
+              </label>
+              <p class="tips" style="margin-top:8px;">Debug level mode: <strong>no bots</strong>, <strong>no shooting</strong>, free-fly movement + map editor.</p>
+              <p class="tips" style="margin-top:6px;"><strong>Editor controls:</strong> E place, Q/Delete remove, [ ] size, M material, R rotate, 1-5 slot, K save, L load, N new, P restore original built-in map, Y auto-learn nav training, Z nav overlay, X combat heatmap overlay, B bake nav.</p>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:8px;color:rgba(180,210,235,0.92);font-size:0.72rem;">
+                <input id="debug-nav-always-learn" type="checkbox" checked style="accent-color:#7ad4ff;">
+                Always learn during normal singleplayer matches
+              </label>
+              <p class="tips" style="margin-top:6px;"><strong>Publish options:</strong> O publish local (add/replace, up to 99), J load local, U export JSON, I import JSON.</p>
+              <button type="button" id="startbtn-debug-level-enter" style="margin-top:8px;padding:10px 18px;font-size:0.78rem;font-weight:700;background:rgba(50,130,210,0.2);border:2px solid rgba(110,180,255,0.8);color:#d4ebff;border-radius:3px;cursor:pointer;letter-spacing:0.14em;text-transform:uppercase;font-family:'Orbitron',sans-serif;">Enter selected debug level</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+            <button type="button" id="startbtn-sp" style="flex:1 1 180px;max-width:320px;padding:12px 24px;font-size:0.82rem;font-weight:700;background:linear-gradient(180deg, rgba(255,150,60,0.25) 0%, rgba(255,100,30,0.12) 100%);border:2px solid rgba(255,160,80,0.85);color:#ffd4a8;border-radius:3px;cursor:pointer;letter-spacing:0.2em;text-transform:uppercase;font-family:'Orbitron',sans-serif;box-shadow:0 0 28px rgba(255,120,50,0.2);">Enter singleplayer</button>
+          </div>
+        </div>
+
+        <div id="menu-panel-settings" class="menu-panel hidden">
+          <p class="menu-settings-hint">Mouse sensitivity — same value as the pause menu (Esc) in-game.</p>
+          <label style="color:rgba(180,200,220,0.9);font-size:0.75rem;display:flex;flex-direction:column;gap:8px;">
+            Mouse sensitivity
+            <span style="display:flex;align-items:center;gap:10px;">
+              <input type="range" id="menu-sens-slider" min="0.35" max="2" step="0.05" value="1">
+              <span id="menu-sens-val">1.00×</span>
+            </span>
+          </label>
+          <div class="nick-wrap" style="margin-top:14px;">
+            <label for="nick-input-settings">Nickname</label>
+            <input type="text" id="nick-input-settings" data-nick-input maxlength="20" placeholder="optional" autocomplete="username">
+          </div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(100,170,210,0.2);display:flex;flex-direction:column;gap:10px;">
+            <label style="color:rgba(180,200,220,0.9);font-size:0.75rem;display:flex;flex-direction:column;gap:8px;">
+              Master volume
+              <span style="display:flex;align-items:center;gap:10px;">
+                <input type="range" id="menu-vol-slider" min="0" max="1" step="0.01" value="1" style="width:100%;max-width:280px;accent-color:#4ad4ff;cursor:pointer;">
+                <span id="menu-vol-val" style="color:#7ee8ff;font-family:'Orbitron',monospace;font-size:0.85rem;">100%</span>
+              </span>
+            </label>
+            <label style="color:rgba(180,200,220,0.9);font-size:0.75rem;display:flex;flex-direction:column;gap:6px;">
+              Output mode
+              <select id="menu-audio-mode" style="padding:8px 10px;max-width:220px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                <option value="stereo">Stereo</option>
+                <option value="mono">Mono</option>
+              </select>
+            </label>
+            <label style="color:rgba(180,200,220,0.9);font-size:0.75rem;display:flex;flex-direction:column;gap:6px;">
+              Bot skill preset
+              <select id="menu-bot-preset" style="padding:8px 10px;max-width:220px;background:rgba(0,8,18,0.6);border:1px solid rgba(100,170,200,0.35);border-radius:4px;color:#dcecff;">
+                <option value="arcade">Arcade</option>
+                <option value="classic">UT Classic</option>
+                <option value="sweaty">Sweaty</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <footer class="menu-footer">
+      <div class="menu-profile">
+        <div class="menu-avatar-wrap">
+          <div class="menu-avatar" id="menu-avatar" aria-label="Profile picture">👤</div>
+          <span class="menu-avatar-badge" id="menu-avatar-badge">P0</span>
+          <input type="file" id="menu-avatar-upload" accept="image/*" style="display:none;">
+        </div>
+        <div class="menu-profile-text">
+          <span id="menu-profile-name">USER_0000</span>
+          <span id="menu-profile-rank">Rank: Soldier</span>
+          <span>Level: <span id="menu-profile-level">1</span></span>
+          <div class="menu-xp-bar" title="Progress (multiplayer)"><i id="menu-profile-xp-fill"></i></div>
+        </div>
+      </div>
+      <div class="menu-footer-right">
+        <div>Version 1.12.1</div>
+        <div>URL: <a id="menu-ruleset-info" href="https://polystrike.noscapect.nl" target="_blank" rel="noopener noreferrer" style="color:#ffd866;text-decoration:none;">https://noscapect.itch.io/polystrike-arena</a></div>
+        <div class="menu-social" aria-label="Community">
+          <a href="https://discord.com" target="_blank" rel="noopener noreferrer" title="Discord">D</a>
+          <a href="https://x.com" target="_blank" rel="noopener noreferrer" title="X">𝕏</a>
+          <a href="https://store.steampowered.com" target="_blank" rel="noopener noreferrer" title="Steam">S</a>
+        </div>
+      </div>
+    </footer>
+    <div id="menu-admob-banner-slot" aria-live="polite">Advertentie wordt geladen...</div>
+  </div>
+</div>
+
+<div id="pause-overlay">
+  <h2>Paused</h2>
+  <p class="pause-hint">WASD · mouse · fire · jump · Tab scoreboard on/off · double-tap dodge · Esc or button to continue</p>
+  <label>
+    Mouse sensitivity
+    <input type="range" id="sens-slider" min="0.35" max="2" step="0.05" value="1">
+    <span id="sens-val">1.00×</span>
+  </label>
+  <div class="nick-wrap">
+    <label for="nick-input-pause">Nickname</label>
+    <input type="text" id="nick-input-pause" data-nick-input maxlength="20" placeholder="optional (empty = You)" autocomplete="username">
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+    <button type="button" id="resumebtn">Resume</button>
+    <button type="button" id="quitmatchbtn" style="padding:10px 26px;font-size:0.8rem;font-weight:700;background:transparent;border:2px solid #8899aa;color:#d0d8e0;border-radius:3px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;font-family:'Orbitron',sans-serif;">Quit match</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/jsm/"
+  }
+}
+</script>
+<script type="module" src="three-setup.mjs"></script>
+<script defer src="audio.js"></script>
+<script defer src="game.js"></script>
+<script defer src="maps.js"></script>
+<script defer src="bots.js"></script>
+<script defer src="mp-client.js"></script>
+<script type="module" src="ibl.mjs"></script>
+<script>
+  (function initMenuAdMobBanner() {
+    function showAdSlotFallback(message) {
+      const slot = document.getElementById('menu-admob-banner-slot');
+      if (!slot) return;
+      if (message) slot.textContent = message;
+      slot.classList.add('is-visible');
+    }
+
+    function initBanner() {
+      const admob = window.admob || window.AdMob || null;
+      if (!admob || typeof admob.createBanner !== 'function') {
+        return;
+      }
+
+      showAdSlotFallback();
+
+      try {
+        admob.createBanner({
+          adId: 'ca-app-pub-6937839676187337/5657661179',
+          position: admob.AD_POSITION ? admob.AD_POSITION.BOTTOM_CENTER : 8,
+          autoShow: true,
+          overlap: false,
+          isTesting: false
+        });
+      } catch (err) {
+        showAdSlotFallback('AdMob banner kon niet laden');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initBanner, { once: true });
+    } else {
+      initBanner();
+    }
+  })();
+</script>
+</body>
+</html>

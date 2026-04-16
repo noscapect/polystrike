@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polystrike Arena — Server admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      margin: 0;
+      padding: 1rem 1.25rem;
+      background: #0f1115;
+      color: #e8eaed;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; font-weight: 600; }
+    .card {
+      background: #1a1d24;
+      border: 1px solid #2a3040;
+      border-radius: 8px;
+      padding: 1rem;
+      max-width: 520px;
+      margin-bottom: 1rem;
+    }
+    label { display: block; font-size: 0.8rem; color: #9aa0a6; margin-bottom: 0.25rem; }
+    input {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border: 1px solid #3c4454;
+      border-radius: 6px;
+      background: #0f1115;
+      color: #e8eaed;
+      margin-bottom: 0.75rem;
+    }
+    button {
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid #4a5568;
+      background: #2d3748;
+      color: #e8eaed;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: #374151; }
+    button.primary { background: #2563eb; border-color: #1d4ed8; }
+    button.primary:hover { background: #1d4ed8; }
+    button.danger { background: #7f1d1d; border-color: #991b1b; }
+    .err { color: #f87171; font-size: 0.85rem; margin-top: 0.5rem; }
+    .stats { font-size: 0.9rem; line-height: 1.6; }
+    .stats strong { color: #93c5fd; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.75rem; }
+    th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid #2a3040; }
+    th { color: #9aa0a6; font-weight: 500; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Polystrike Arena server admin</h1>
+
+  <div id="login-card" class="card">
+    <label for="user">Username</label>
+    <input id="user" type="text" autocomplete="username" />
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password" />
+    <button type="button" class="primary" id="btn-login">Log in</button>
+    <div id="login-err" class="err hidden"></div>
+  </div>
+
+  <div id="dash" class="hidden">
+    <div class="card stats" id="stats"></div>
+    <div class="card">
+      <div class="actions">
+        <button type="button" id="btn-refresh">Refresh</button>
+        <button type="button" id="btn-start">Start round</button>
+        <button type="button" id="btn-end">End round now</button>
+        <button type="button" id="btn-add60">+60s round time</button>
+        <button type="button" id="btn-tp">Teleport all to spawns</button>
+        <button type="button" id="btn-logout">Log out</button>
+      </div>
+    </div>
+    <div class="card">
+      <strong>Players</strong>
+      <table>
+        <thead><tr><th>Slot</th><th>Name</th><th>K</th><th>D</th><th></th></tr></thead>
+        <tbody id="players-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const TOKEN_KEY = 'ws_admin_token';
+      let token = sessionStorage.getItem(TOKEN_KEY) || '';
+
+      const loginCard = document.getElementById('login-card');
+      const dash = document.getElementById('dash');
+      const loginErr = document.getElementById('login-err');
+      const statsEl = document.getElementById('stats');
+      const playersBody = document.getElementById('players-body');
+
+      const POLL_MS = 1000;
+      let pollTimer = null;
+
+      function stopPolling() {
+        if (pollTimer != null) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      }
+
+      function startPolling() {
+        stopPolling();
+        if (!token) return;
+        pollTimer = setInterval(function () {
+          if (document.hidden) return;
+          refresh().catch(function () {});
+        }, POLL_MS);
+      }
+
+      function api(path, opts) {
+        const o = opts || {};
+        const h = Object.assign({ 'Content-Type': 'application/json' }, o.headers || {});
+        if (token) h.Authorization = 'Bearer ' + token;
+        return fetch(path, Object.assign({}, o, { headers: h })).then(function (r) {
+          return r.json().then(function (j) {
+            if (r.status === 401) {
+              token = '';
+              sessionStorage.removeItem(TOKEN_KEY);
+              showLogin();
+              throw new Error(j.error || 'Unauthorized');
+            }
+            return j;
+          });
+        });
+      }
+
+      function showLogin() {
+        stopPolling();
+        loginCard.classList.remove('hidden');
+        dash.classList.add('hidden');
+      }
+
+      function showDash() {
+        loginCard.classList.add('hidden');
+        dash.classList.remove('hidden');
+      }
+
+      function fmtTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return m + ':' + (sec < 10 ? '0' : '') + sec;
+      }
+
+      function renderState(data) {
+        if (!data.ok) return;
+        statsEl.innerHTML =
+          '<strong>Tick</strong> ' + data.tick +
+          ' &nbsp; <strong>Round</strong> ' + (data.roundActive ? 'active' : 'paused') +
+          ' &nbsp; <strong>Timer</strong> ' + fmtTime(data.roundTimer) +
+          ' &nbsp; <strong>Intermission</strong> ' + data.intermission.toFixed(1) + 's' +
+          '<br />' +
+          '<strong>Humans connected</strong> ' + data.connectedHumans +
+          ' &nbsp; <strong>WS clients</strong> ' + data.wsClients;
+
+        playersBody.innerHTML = '';
+        (data.entities || []).forEach(function (e) {
+          const tr = document.createElement('tr');
+          const role = e.isBot ? 'bot' : 'human';
+          const kickBtn =
+            !e.isBot && e.slot >= 0
+              ? '<button type="button" data-kick="' + e.slot + '">Kick</button>'
+              : '—';
+          tr.innerHTML =
+            '<td>' + e.slot + '</td>' +
+            '<td>' + escapeHtml(e.name) + ' <span style="color:#666">(' + role + ')</span></td>' +
+            '<td>' + e.kills + '</td>' +
+            '<td>' + e.deaths + '</td>' +
+            '<td>' + kickBtn + '</td>';
+          playersBody.appendChild(tr);
+        });
+
+        playersBody.querySelectorAll('[data-kick]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const slot = parseInt(btn.getAttribute('data-kick'), 10);
+            api('/api/admin/kick', {
+              method: 'POST',
+              body: JSON.stringify({ slot: slot }),
+            }).then(function () {
+              return refresh();
+            }).catch(function () {});
+          });
+        });
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function refresh() {
+        return api('/api/admin/state').then(renderState);
+      }
+
+      document.getElementById('btn-login').addEventListener('click', function () {
+        loginErr.classList.add('hidden');
+        const username = document.getElementById('user').value.trim();
+        const password = document.getElementById('pass').value;
+        fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (j) {
+            if (j.ok && j.token) {
+              token = j.token;
+              sessionStorage.setItem(TOKEN_KEY, token);
+              showDash();
+              return refresh().then(function () {
+                startPolling();
+              });
+            }
+            loginErr.textContent = j.error || 'Login failed';
+            loginErr.classList.remove('hidden');
+          })
+          .catch(function () {
+            loginErr.textContent = 'Network error';
+            loginErr.classList.remove('hidden');
+          });
+      });
+
+      document.getElementById('btn-refresh').addEventListener('click', function () {
+        refresh().catch(function () {});
+      });
+      document.getElementById('btn-start').addEventListener('click', function () {
+        api('/api/admin/start-round', { method: 'POST', body: '{}' }).then(function () {
+          return refresh();
+        }).catch(function () {});
+      });
+      document.getElementById('btn-end').addEventListener('click', function () {
+        api('/api/admin/end-round', { method: 'POST', body: '{}' }).then(function () {
+          return refresh();
+        }).catch(function () {});
+      });
+      document.getElementById('btn-add60').addEventListener('click', function () {
+        api('/api/admin/add-time', {
+          method: 'POST',
+          body: JSON.stringify({ seconds: 60 }),
+        })
+          .then(function () {
+            return refresh();
+          })
+          .catch(function () {});
+      });
+      document.getElementById('btn-tp').addEventListener('click', function () {
+        api('/api/admin/teleport-all', { method: 'POST', body: '{}' })
+          .then(function () {
+            return refresh();
+          })
+          .catch(function () {});
+      });
+      document.getElementById('btn-logout').addEventListener('click', function () {
+        token = '';
+        sessionStorage.removeItem(TOKEN_KEY);
+        showLogin();
+      });
+
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && token && loginCard.classList.contains('hidden')) {
+          refresh().catch(function () {});
+        }
+      });
+
+      if (token) {
+        showDash();
+        refresh()
+          .then(function () {
+            startPolling();
+          })
+          .catch(function () {
+            showLogin();
+          });
+      }
+    })();
+  </script>
+</body>
+</html>

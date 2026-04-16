@@ -1,0 +1,167 @@
+function buildMorpheus() {
+  buildSkyDome('#000008', '#060214', '#000006', 2000, 0xccbbff);
+
+  const tMarble = texWhiteMarble(); tMarble.repeat.set(8, 8);
+  const tColMat = texMetalPlate('#18202e'); tColMat.repeat.set(2, 4);
+  const tMorpheusAccent = texMetalPlate('#16285e'); tMorpheusAccent.repeat.set(3, 3);
+
+  const matPlat = new THREE.MeshStandardMaterial({ color: 0xd8dce8, roughness: 0.65, metalness: 0.15, map: tMarble });
+  const matGlow = new THREE.MeshStandardMaterial({ color: 0x4466ff, emissive: new THREE.Color(0x2244ee), roughness: 0.1, metalness: 1.0 });
+  const matTrim = new THREE.MeshStandardMaterial({ color: 0x3355cc, emissive: new THREE.Color(0x1133aa), roughness: 0.2, metalness: 0.9, map: tMorpheusAccent });
+  const matCol  = new THREE.MeshStandardMaterial({ color: 0x303850, roughness: 0.5, metalness: 0.75, map: tColMat });
+
+  function platTrim(cx, ty, cz, hw, hd) {
+    for (const a of [
+      [cx,      ty + 0.06, cz + hd, hw * 2, 0.1, 0.22],
+      [cx,      ty + 0.06, cz - hd, hw * 2, 0.1, 0.22],
+      [cx + hw, ty + 0.06, cz,      0.22,   0.1, hd * 2],
+      [cx - hw, ty + 0.06, cz,      0.22,   0.1, hd * 2],
+    ]) {
+      addDecoBox(...a, matGlow);
+    }
+  }
+
+  addBox(0, -0.5, 0, 36, 1, 36, matPlat);
+  platTrim(0, 0, 0, 18, 18);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.1, 16), matGlow);
+  core.position.set(0, 0.05, 0); sceneAddArena(core);
+  for (const [cx, cz] of [[-13, -13], [13, -13], [-13, 13], [13, 13]])
+    addBox(cx, -18, cz, 2, 34, 2, matCol);
+
+  for (const [cx, cz] of [[14, 14], [-14, -14], [14, -14], [-14, 14]]) {
+    addBox(cx, 1, cz, 6, 1, 6, matPlat);
+    platTrim(cx, 1.5, cz, 3, 3);
+    addBox(cx, -8, cz, 1.2, 18, 1.2, matCol);
+  }
+
+  for (const [cx, cz] of [[22, 22], [-22, -22], [22, -22], [-22, 22]]) {
+    addBox(cx, 2.5, cz, 14, 1, 14, matPlat);
+    platTrim(cx, 3, cz, 7, 7);
+    addBox(cx, -10, cz, 2, 26, 2, matCol);
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4, 8), matTrim);
+    pil.position.set(cx, 5, cz); sceneAddArena(pil);
+  }
+
+  for (const [cx, cz] of [[34, 0], [-34, 0], [0, 30], [0, -30]]) {
+    addBox(cx, 5, cz, 10, 1, 10, matPlat);
+    platTrim(cx, 5.5, cz, 5, 5);
+    addBox(cx, -14, cz, 1.5, 38, 1.5, matCol);
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 5, 8), matTrim);
+    pil.position.set(cx, 8, cz); sceneAddArena(pil);
+  }
+
+  for (const [cx, cz] of [[28, 28], [-28, -28], [28, -28], [-28, 28]]) {
+    addBox(cx, 8.5, cz, 7, 1, 7, matPlat);
+    platTrim(cx, 9, cz, 3.5, 3.5);
+    addBox(cx, -16, cz, 1.5, 50, 1.5, matCol);
+    addDecoBox(cx, 12.5, cz, 2.2, 6, 2.2, matTrim);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3, 8), matGlow);
+    cap.position.set(cx, 16.5, cz); sceneAddArena(cap);
+  }
+
+  // Optional atlas pass for custom DM-Morpheus texture sheets.
+  // Expected layout: 4x2 sheet. makeAtlasTileTexture() trims label text away.
+  const atlasLoader = new THREE.TextureLoader();
+  const morpheusAtlasCandidates = [
+    'assets/dm-morpheus-texture-sheet.png',
+    'assets/dm-morpheus-textures.png',
+    'assets/dm-morpheus-atlas.png',
+    'assets/dm-morpheus-sheet.png',
+    'assets/morpheus-texture-sheet.png',
+  ];
+  const tryLoadMorpheusAtlas = (idx = 0) => {
+    if (idx >= morpheusAtlasCandidates.length) return;
+    atlasLoader.load(
+      morpheusAtlasCandidates[idx],
+      imageTex => {
+        const img = imageTex.image;
+        const tx0 = makeAtlasTileTexture(img, 0, 0, 4, 2, 8, 8, 0.34);
+        const tx1 = makeAtlasTileTexture(img, 1, 0, 4, 2, 3, 4, 0.34);
+        const tx2 = makeAtlasTileTexture(img, 2, 0, 4, 2, 3, 2, 0.34);
+        const tx3 = makeAtlasTileTexture(img, 3, 0, 4, 2, 2, 4, 0.34);
+        const tx4 = makeAtlasTileTexture(img, 0, 1, 4, 2, 3, 1, 0.34);
+        const tx5 = makeAtlasTileTexture(img, 1, 1, 4, 2, 1, 1, 0.34);
+        const tx6 = makeAtlasTileTexture(img, 2, 1, 4, 2, 3, 2, 0.34);
+        const tx7 = makeAtlasTileTexture(img, 3, 1, 4, 2, 2, 2, 0.34);
+
+        // Smart role mapping for Morpheus platform architecture.
+        if (tx0) { matPlat.map = tx0; matPlat.needsUpdate = true; }
+        if (tx1) { matCol.map = tx1; matCol.needsUpdate = true; }
+        if (tx2) {
+          matTrim.map = tx2;
+          matTrim.needsUpdate = true;
+        }
+        if (tx3) {
+          matGlow.map = tx3;
+          matGlow.needsUpdate = true;
+        }
+        if (tx4) {
+          matGlow.map = tx4;
+          matGlow.emissive = new THREE.Color(0x1d2e72);
+          matGlow.emissiveIntensity = 0.78;
+          matGlow.needsUpdate = true;
+        }
+        if (tx5) {
+          matTrim.map = tx5;
+          matTrim.emissive = new THREE.Color(0x1f6f79);
+          matTrim.emissiveIntensity = 0.44;
+          matTrim.needsUpdate = true;
+        }
+        if (tx6) {
+          const accentMat = new THREE.MeshStandardMaterial({
+            color: 0xd6a55c,
+            roughness: 0.24,
+            metalness: 0.7,
+            map: tx6,
+            emissive: new THREE.Color(0x6a3b18),
+            emissiveIntensity: 0.54,
+          });
+          for (const [cx, cz] of [[14, 14], [-14, -14], [14, -14], [-14, 14]]) {
+            const a = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.22, 12), accentMat);
+            a.position.set(cx, 1.66, cz);
+            sceneAddArena(a);
+          }
+        }
+        if (tx7) {
+          const crateMat = new THREE.MeshStandardMaterial({ color: 0xab8a67, roughness: 0.78, metalness: 0.08, map: tx7 });
+          [[34, 5.8, 0], [-34, 5.8, 0], [0, 5.8, 30], [0, 5.8, -30]].forEach(([x, y, z]) => {
+            addBox(x, y, z, 2.4, 1.2, 2.4, crateMat);
+          });
+        }
+      },
+      undefined,
+      () => tryLoadMorpheusAtlas(idx + 1)
+    );
+  };
+  tryLoadMorpheusAtlas();
+}
+
+function buildMorpheusLights() {
+  sceneAddArena(new THREE.AmbientLight(0x1a1a3a, 0.86));
+  sceneAddArena(new THREE.HemisphereLight(0x7098d8, 0x101018, 0.46));
+  const sun = new THREE.DirectionalLight(0xaabbff, 0.84);
+  sun.position.set(30, 60, 20); sun.castShadow = true;
+  sun.shadow.bias = -0.00028;
+  sun.shadow.normalBias = 0.028;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 250;
+  sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
+  sun.shadow.camera.top = 80;   sun.shadow.camera.bottom = -80;
+  sceneAddArena(sun);
+  [[0, 2, 0], [22, 5, 22], [-22, 5, -22], [22, 5, -22], [-22, 5, 22]].forEach(([x, y, z]) => {
+    const l = new THREE.PointLight(0x4466ff, 3.15, 45); l.position.set(x, y, z); sceneAddArena(l);
+  });
+  [[34, 7, 0], [-34, 7, 0], [0, 7, 30], [0, 7, -30]].forEach(([x, y, z]) => {
+    const l = new THREE.PointLight(0x3355ff, 2.75, 38); l.position.set(x, y, z); sceneAddArena(l);
+  });
+  [[28, 11, 28], [-28, 11, -28], [28, 11, -28], [-28, 11, 28]].forEach(([x, y, z]) => {
+    const l = new THREE.PointLight(0x5577ff, 2.75, 30); l.position.set(x, y, z); sceneAddArena(l);
+  });
+  const coreLight = new THREE.PointLight(0x6699ff, 3.6, 30);
+  coreLight.position.set(0, 3, 0); sceneAddArena(coreLight);
+  // Vertical landmark lighting for high platforms.
+  [[34, 10, 0], [-34, 10, 0], [0, 10, 30], [0, 10, -30]].forEach(([x, y, z]) => {
+    const l = new THREE.PointLight(0x88a8ff, 1.7, 34); l.position.set(x, y, z); sceneAddArena(l);
+  });
+  addRimFillLights();
+}

@@ -624,11 +624,14 @@ function buildMorpheus() {
   const tMarble = texWhiteMarble(); tMarble.repeat.set(8, 8);
   const tColMat = texMetalPlate('#18202e'); tColMat.repeat.set(2, 4);
   const tMorpheusAccent = texMetalPlate('#16285e'); tMorpheusAccent.repeat.set(3, 3);
+  const tGrate = texMetalGrate(); tGrate.repeat.set(4, 4);
 
   const matPlat = new THREE.MeshStandardMaterial({ color: 0xd8dce8, roughness: 0.65, metalness: 0.15, map: tMarble });
   const matGlow = new THREE.MeshStandardMaterial({ color: 0x4466ff, emissive: new THREE.Color(0x2244ee), roughness: 0.1, metalness: 1.0 });
   const matTrim = new THREE.MeshStandardMaterial({ color: 0x3355cc, emissive: new THREE.Color(0x1133aa), roughness: 0.2, metalness: 0.9, map: tMorpheusAccent });
   const matCol  = new THREE.MeshStandardMaterial({ color: 0x303850, roughness: 0.5, metalness: 0.75, map: tColMat });
+  const matGrate = new THREE.MeshStandardMaterial({ color: 0x5a6474, roughness: 0.58, metalness: 0.48, map: tGrate });
+  const matGlass = new THREE.MeshStandardMaterial({ color: 0xaaccff, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.5 });
 
   function platTrim(cx, ty, cz, hw, hd) {
     for (const a of [
@@ -641,46 +644,87 @@ function buildMorpheus() {
     }
   }
 
-  addBox(0, -0.5, 0, 36, 1, 36, matPlat);
-  platTrim(0, 0, 0, 18, 18);
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.1, 16), matGlow);
-  core.position.set(0, 0.05, 0); sceneAddArena(core);
-  for (const [cx, cz] of [[-13, -13], [13, -13], [-13, 13], [13, 13]])
-    addBox(cx, -18, cz, 2, 34, 2, matCol);
+  // --- Central Hub (Level 0, top 0.0) ---
+  addBox(0, -0.5, 0, 20, 1, 36, matPlat);
+  addBox(0, -0.5, 0, 36, 1, 20, matPlat);
+  platTrim(0, 0, 0, 10, 18);
+  platTrim(0, 0, 0, 18, 10);
+  
+  addBox(0, -0.4, 0, 10, 1.2, 10, matGlass);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.5, 16), matGlow);
+  core.position.set(0, 0.25, 0); sceneAddArena(core);
 
+  for (const [cx, cz] of [[-12, -12], [12, -12], [-12, 12], [12, 12]]) {
+    addBox(cx, -18, cz, 3, 34, 3, matCol);
+    addDecoBox(cx, 0.5, cz, 4, 2, 4, matTrim);
+  }
+
+  // --- Level 1 (Top 1.5) at +-14, +-14 ---
   for (const [cx, cz] of [[14, 14], [-14, -14], [14, -14], [-14, 14]]) {
-    addBox(cx, 1, cz, 6, 1, 6, matPlat);
-    platTrim(cx, 1.5, cz, 3, 3);
-    addBox(cx, -8, cz, 1.2, 18, 1.2, matCol);
+    addBox(cx, 1, cz, 8, 1, 8, matPlat);
+    platTrim(cx, 1.5, cz, 4, 4);
+    addBox(cx, -8, cz, 2, 18, 2, matCol);
+    addBox(cx + (cx>0?3:-3), 2.5, cz, 1, 2, 6, matTrim);
+    addBox(cx, 2.5, cz + (cz>0?3:-3), 6, 2, 1, matTrim);
   }
 
+  // --- Level 2 (Top 3.0) at +-22, +-22 ---
   for (const [cx, cz] of [[22, 22], [-22, -22], [22, -22], [-22, 22]]) {
-    addBox(cx, 2.5, cz, 14, 1, 14, matPlat);
-    platTrim(cx, 3, cz, 7, 7);
-    addBox(cx, -10, cz, 2, 26, 2, matCol);
-    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 4, 8), matTrim);
-    pil.position.set(cx, 5, cz); sceneAddArena(pil);
+    addBox(cx, 2.5, cz, 16, 1, 16, matGrate);
+    platTrim(cx, 3, cz, 8, 8);
+    addBox(cx, -10, cz, 2.5, 26, 2.5, matCol);
+    
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14, 8), matGlow);
+    strut.position.set(cx - Math.sign(cx)*5, 0, cz - Math.sign(cz)*5);
+    strut.rotation.x = Math.PI / 4 * Math.sign(cz);
+    strut.rotation.z = -Math.PI / 4 * Math.sign(cx);
+    sceneAddArena(strut);
+
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 8, 8), matTrim);
+    pil.position.set(cx, 7, cz); sceneAddArena(pil);
   }
 
+  // Floating steps to Level 3
+  for (let s = 1; s <= 3; s++) {
+    const h = 3.0 + s * 0.625;
+    addBox(22 + s*3, h-0.5, 22 - s*5.5, 3, 1, 3, matGlass);
+    addBox(22 - s*5.5, h-0.5, 22 + s*3, 3, 1, 3, matGlass);
+    addBox(-22 - s*3, h-0.5, -22 + s*5.5, 3, 1, 3, matGlass);
+    addBox(-22 + s*5.5, h-0.5, -22 - s*3, 3, 1, 3, matGlass);
+    addBox(22 + s*3, h-0.5, -22 + s*5.5, 3, 1, 3, matGlass);
+    addBox(22 - s*5.5, h-0.5, -22 - s*3, 3, 1, 3, matGlass);
+    addBox(-22 - s*3, h-0.5, 22 - s*5.5, 3, 1, 3, matGlass);
+    addBox(-22 + s*5.5, h-0.5, 22 + s*3, 3, 1, 3, matGlass);
+  }
+
+  // --- Level 3 (Top 5.5) at +-34, 0 and 0, +-30 ---
   for (const [cx, cz] of [[34, 0], [-34, 0], [0, 30], [0, -30]]) {
-    addBox(cx, 5, cz, 10, 1, 10, matPlat);
-    platTrim(cx, 5.5, cz, 5, 5);
-    addBox(cx, -14, cz, 1.5, 38, 1.5, matCol);
-    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 5, 8), matTrim);
-    pil.position.set(cx, 8, cz); sceneAddArena(pil);
+    addBox(cx, 5, cz, 14, 1, 14, matPlat);
+    platTrim(cx, 5.5, cz, 7, 7);
+    addBox(cx, -14, cz, 3, 38, 3, matCol);
+    addBox(cx + (cx!==0 ? Math.sign(cx)*6 : 0), 6.5, cz + (cz!==0 ? Math.sign(cz)*6 : 0), cx!==0?2:14, 2, cz!==0?14:2, matTrim);
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 10, 8), matTrim);
+    pil.position.set(cx, 10, cz); sceneAddArena(pil);
   }
 
-  for (const [cx, cz] of [[28, 28], [-28, -28], [28, -28], [-28, 28]]) {
-    addBox(cx, 8.5, cz, 7, 1, 7, matPlat);
-    platTrim(cx, 9, cz, 3.5, 3.5);
-    addBox(cx, -16, cz, 1.5, 50, 1.5, matCol);
-    addDecoBox(cx, 12.5, cz, 2.2, 6, 2.2, matTrim);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3, 8), matGlow);
-    cap.position.set(cx, 16.5, cz); sceneAddArena(cap);
+  // --- Level 4 (Top 8.1) at +-28, +-22 (approx) ---
+  for (const [cx, cz] of [[28, 25], [-28, -25], [28, -25], [-28, 25]]) {
+    addBox(cx, 7.6, cz, 10, 1, 14, matPlat);
+    platTrim(cx, 8.1, cz, 5, 7);
+    addBox(cx, -16, cz, 2, 48, 2, matCol);
+    addDecoBox(cx, 10.1, cz, 3, 4, 3, matTrim);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(2, 5, 8), matGlow);
+    cap.position.set(cx, 14.6, cz); sceneAddArena(cap);
   }
 
-  // Optional atlas pass for custom DM-Morpheus texture sheets.
-  // Expected layout: 4x2 sheet. makeAtlasTileTexture() trims label text away.
+  for (let s = 1; s <= 2; s++) {
+    const h = 5.5 + s * 0.86;
+    addBox(34 - s*2, h-0.5, s*8.3, 3, 1, 3, matGlass);
+    addBox(34 - s*2, h-0.5, -s*8.3, 3, 1, 3, matGlass);
+    addBox(-34 + s*2, h-0.5, s*8.3, 3, 1, 3, matGlass);
+    addBox(-34 + s*2, h-0.5, -s*8.3, 3, 1, 3, matGlass);
+  }
+
   const atlasLoader = new THREE.TextureLoader();
   const morpheusAtlasCandidates = [
     'assets/dm-morpheus-texture-sheet.png',
@@ -704,7 +748,6 @@ function buildMorpheus() {
         const tx6 = makeAtlasTileTexture(img, 2, 1, 4, 2, 3, 2, 0.34);
         const tx7 = makeAtlasTileTexture(img, 3, 1, 4, 2, 2, 2, 0.34);
 
-        // Smart role mapping for Morpheus platform architecture.
         if (tx0) { matPlat.map = tx0; matPlat.needsUpdate = true; }
         if (tx1) { matCol.map = tx1; matCol.needsUpdate = true; }
         if (tx2) {
@@ -2105,7 +2148,7 @@ const SPAWN_POINTS = [
     [14, 2.6, 14], [-14, 2.6, -14], [14, 2.6, -14], [-14, 2.6, 14],
     [22, 4.1, 22], [-22, 4.1, -22], [22, 4.1, -22], [-22, 4.1, 22],
     [34, 6.6, 0], [-34, 6.6, 0], [0, 6.6, 30], [0, 6.6, -30],
-    [28, 9.2, 22], [-28, 9.2, -22], [28, 9.2, -22], [-28, 9.2, 22],
+    [28, 9.2, 25], [-28, 9.2, -25], [28, 9.2, -25], [-28, 9.2, 25],
   ],
   // Map 3: DM-Phobos
   [
@@ -2175,11 +2218,11 @@ const CLASSIC_ITEM_SPAWNS = [
   ],
   // Map 2
   [
-    { type: 'weapon_shock', x: 0, y: 1.2, z: 0 },
-    { type: 'weapon_rocket', x: 22, y: 4.3, z: 22 },
-    { type: 'health', x: -10, y: 1.2, z: -10 },
-    { type: 'health', x: 10, y: 1.2, z: 10 },
-    { type: 'shield_belt', x: 0, y: 6.7, z: 0 },
+    { type: 'weapon_shock', x: 0, y: 1.5, z: 0 },
+    { type: 'weapon_rocket', x: 28, y: 9.3, z: 25 },
+    { type: 'health', x: -12, y: 1.2, z: -12 },
+    { type: 'health', x: 12, y: 1.2, z: 12 },
+    { type: 'shield_belt', x: 0, y: 6.7, z: 30 },
     { type: 'ammo_cells', x: -22, y: 4.3, z: -22 },
     { type: 'ammo_rockets', x: 34, y: 6.8, z: 0 },
   ],
